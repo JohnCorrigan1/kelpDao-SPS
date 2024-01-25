@@ -1,96 +1,89 @@
 mod abi;
 mod pb;
 use hex_literal::hex;
-use pb::eth::erc721::v1 as erc721;
-use substreams::{key, prelude::*};
-use substreams::{log, store::StoreAddInt64, Hex};
-use substreams_database_change::pb::database::DatabaseChanges;
-use substreams_database_change::tables::Tables;
+use pb::kelp_dao::{AssetDeposit, AssetDeposits};
+use substreams::scalar::{BigDecimal, BigInt};
+use substreams::Hex;
+use substreams_entity_change::pb::entity::EntityChanges;
+use substreams_entity_change::tables::Tables;
 use substreams_ethereum::pb::sf::ethereum::r#type::v2 as eth;
 
-// Bored Ape Club Contract
-const TRACKED_CONTRACT: [u8; 20] = hex!("bc4ca0eda7647a8ab7c2061c2e118a18a936f13d");
+// kelp dao LRT deposits contract
+const TRACKED_CONTRACT: [u8; 20] = hex!("036676389e48133B63a802f8635AD39E752D375D");
 
 substreams_ethereum::init!();
-
-/// Extracts transfers events from the contract
 #[substreams::handlers::map]
-fn map_transfers(blk: eth::Block) -> Result<Option<erc721::Transfers>, substreams::errors::Error> {
-    let transfers: Vec<_> = blk
-        .events::<abi::erc721::events::Transfer>(&[&TRACKED_CONTRACT])
-        .map(|(transfer, log)| {
-            substreams::log::info!("NFT Transfer seen");
-
-            erc721::Transfer {
-                trx_hash: Hex::encode(&log.receipt.transaction.hash),
-                from: Hex::encode(&transfer.from),
-                to: Hex::encode(&transfer.to),
-                token_id: transfer.token_id.to_u64(),
-                ordinal: log.block_index() as u64,
+fn map_deposits(blk: eth::Block) -> Result<Option<AssetDeposits>, substreams::errors::Error> {
+    let asset_deposits: Vec<_> = blk
+        .events::<abi::kelp_deposits::events::AssetDeposit>(&[&TRACKED_CONTRACT])
+        .map(|(event, log)| {
+            let asset_name = get_asset_name(&Hex::encode(&event.asset));
+            AssetDeposit {
+                depositor: "0x".to_string() + &Hex::encode(&event.depositor),
+                asset: "0x".to_string() + &Hex::encode(&event.asset),
+                asset_name,
+                deposit_amount: event.deposit_amount.to_string(),
+                deposit_amount_readable: get_amount_eth(event.deposit_amount),
+                rseth_mint_amount: event.rseth_mint_amount.to_string(),
+                rseth_mint_amount_readable: get_amount_eth(event.rseth_mint_amount),
+                referral_id: event.referral_id.to_string(),
+                block_number: blk.number,
+                trx: "0x".to_string() + &Hex::encode(&log.receipt.transaction.hash),
+                timestamp: blk.timestamp().to_string(),
             }
         })
         .collect();
-    if transfers.len() == 0 {
-        return Ok(None);
-    }
 
-    Ok(Some(erc721::Transfers { transfers }))
-}
-
-const NULL_ADDRESS: &str = "0000000000000000000000000000000000000000";
-
-/// Store the total balance of NFT tokens for the specific TRACKED_CONTRACT by holder
-#[substreams::handlers::store]
-fn store_transfers(transfers: erc721::Transfers, s: StoreAddInt64) {
-    log::info!("NFT holders state builder");
-    for transfer in transfers.transfers {
-        if transfer.from != NULL_ADDRESS {
-            log::info!("Found a transfer out {}", Hex(&transfer.trx_hash));
-            s.add(transfer.ordinal, generate_key(&transfer.from), -1);
-        }
-
-        if transfer.to != NULL_ADDRESS {
-            log::info!("Found a transfer in {}", Hex(&transfer.trx_hash));
-            s.add(transfer.ordinal, generate_key(&transfer.to), 1);
-        }
-    }
+    Ok(Some(AssetDeposits { asset_deposits }))
 }
 
 #[substreams::handlers::map]
-fn db_out(
-    clock: substreams::pb::substreams::Clock,
-    transfers: erc721::Transfers,
-    owner_deltas: Deltas<DeltaInt64>,
-) -> Result<DatabaseChanges, substreams::errors::Error> {
+fn graph_out(deposits: AssetDeposits) -> Result<EntityChanges, substreams::errors::Error> {
     let mut tables = Tables::new();
-    for transfer in transfers.transfers {
+
+    for deposit in deposits.asset_deposits {
+        let key = format!("{}-{}", deposit.depositor, deposit.timestamp);
         tables
-            .create_row(
-                "transfer",
-                format!("{}-{}", &transfer.trx_hash, transfer.ordinal),
+            .create_row("AssetDeposit", key)
+            .set("depositor", deposit.depositor)
+            .set("asset", deposit.asset)
+            .set("assetName", deposit.asset_name)
+            .set(
+                "depositAmount",
+                BigInt::try_from(deposit.deposit_amount).unwrap(),
             )
-            .set("trx_hash", transfer.trx_hash)
-            .set("from", transfer.from)
-            .set("to", transfer.to)
-            .set("token_id", transfer.token_id)
-            .set("ordinal", transfer.ordinal);
+            .set_bigdecimal(
+                "depositAmountReadable",
+                &deposit.deposit_amount_readable.to_string(),
+            )
+            .set(
+                "rsethMintAmount",
+                BigInt::try_from(deposit.rseth_mint_amount).unwrap(),
+            )
+            .set_bigdecimal(
+                "rsethMintAmountReadable",
+                &deposit.rseth_mint_amount_readable.to_string(),
+            )
+            .set("referralId", deposit.referral_id)
+            .set("blockNumber", deposit.block_number)
+            .set("trx", deposit.trx)
+            .set("timestamp", deposit.timestamp);
     }
 
-    for delta in owner_deltas.into_iter() {
-        let holder = key::segment_at(&delta.key, 1);
-        let contract = key::segment_at(&delta.key, 2);
-
-        tables
-            .create_row("owner_count", format!("{}-{}", contract, holder))
-            .set("contract", contract)
-            .set("holder", holder)
-            .set("balance", delta.new_value)
-            .set("block_number", clock.number);
-    }
-
-    Ok(tables.to_database_changes())
+    Ok(tables.to_entity_changes())
 }
 
-fn generate_key(holder: &String) -> String {
-    return format!("total:{}:{}", holder, Hex(TRACKED_CONTRACT));
+fn get_amount_eth(amount: BigInt) -> f64 {
+    let amount: BigDecimal = amount / 1e18;
+    let amount = amount.to_string().parse::<f64>().unwrap();
+    (amount * 1000.0).round() / 1000.0
+}
+
+fn get_asset_name(asset: &str) -> String {
+    match asset {
+        "a35b1b31ce002fbf2058d22f30f95d405200a15b" => "ETHx".to_string(),
+        "ac3E018457B222d93114458476f3E3416Abbe38F" => "sfrxETH".to_string(),
+        "ae7ab96520de3a18e5e111b5eaab095312d7fe84" => "stETH".to_string(),
+        _ => "unknown asset".to_string(),
+    }
 }

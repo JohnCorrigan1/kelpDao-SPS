@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package KelpDao;
+
+message AssetDeposits {
+  repeated AssetDeposit assetDeposits = 1;
+}
+
+message AssetDeposit {
+  string depositor = 1;
+  string asset = 2;
+  string assetName = 3;
+  string depositAmount = 4;
+  double depositAmountReadable = 5;
+  string rsethMintAmount = 6;
+  double rsethMintAmountReadable = 7;
+  string referralId = 8;
+  uint64 blockNumber = 9; 
+  string trx = 10;
+  string timestamp = 11;
+}

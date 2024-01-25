@@ -1,0 +1,14 @@
+type AssetDeposit @entity(immutable: true) {
+    id: ID!
+    depositor: String!
+    asset: String!
+    assetName: String!
+    depositAmount: BigInt!
+    depositAmountReadable: BigDecimal!
+    rsethMintAmount: BigInt!
+    rsethMintAmountReadable: BigDecimal!
+    referralId: String!
+    blockNumber: BigInt!
+    trx: String!
+    timestamp: String!
+}

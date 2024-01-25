@@ -1,0 +1,16 @@
+specVersion: 0.0.4
+description: Kelp Dao substreams powered subgraph
+repository: https://github.com/JohnCorrigan1/kelpDao-SPS.git
+schema:
+  file: schema.graphql
+dataSources:
+  - kind: substreams
+    name: Kelp_Dao_Substreams
+    network: mainnet
+    source:
+      package:
+        moduleName: graph_out
+        file: Kelp_Dao_Substreams/Kelp-Dao-Substreams-v0.1.0.spkg
+    mapping:
+      kind: substreams/graph-entities
+      apiVersion: 0.0.5
