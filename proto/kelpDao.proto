@@ -18,4 +18,5 @@ message AssetDeposit {
   uint64 blockNumber = 9; 
   string trx = 10;
   string timestamp = 11;
+  uint64 ordinal = 12;
 }

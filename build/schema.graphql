@@ -12,3 +12,18 @@ type AssetDeposit @entity(immutable: true) {
     trx: String!
     timestamp: String!
 }
+
+type Depositor @entity(immutable: false) {
+    id: ID!
+    rsEthMinted: BigInt!
+    ETHx: BigInt!
+    sfrxETH: BigInt!
+    stETH: BigInt!
+}
+
+type Refferals @entity(immutable: false) {
+    id: ID!
+    rsETHMinted: BigInt!
+}
+
+

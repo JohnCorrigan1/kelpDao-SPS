@@ -30,5 +30,7 @@ pub struct AssetDeposit {
     pub trx: ::prost::alloc::string::String,
     #[prost(string, tag="11")]
     pub timestamp: ::prost::alloc::string::String,
+    #[prost(uint64, tag="12")]
+    pub ordinal: u64,
 }
 // @@protoc_insertion_point(module)

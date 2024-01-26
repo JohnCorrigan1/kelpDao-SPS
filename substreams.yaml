@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: "Kelp_Dao_Substreams"
-  version: v0.1.0
+  version: v0.1.1
 
 imports:
   entities: https://github.com/streamingfast/substreams-sink-entity-changes/releases/download/v1.3.0/substreams-sink-entity-changes-v1.3.0.spkg
@@ -26,11 +26,21 @@ modules:
     output:
       type: proto:KelpDao.AssetDeposits
 
+  - name: store_deposits
+    kind: store
+    initialBlock: 18758282
+    updatePolicy: add
+    valueType: bigint
+    inputs:
+      - map: map_deposits
+
   - name: graph_out
     kind: map
     initialBlock: 18758282
     inputs:
       - map: map_deposits
+      - store: store_deposits
+        mode: get
     output:
       type: proto:sf.substreams.sink.entity.v1.EntityChanges
 

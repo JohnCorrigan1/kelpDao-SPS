@@ -10,7 +10,7 @@ dataSources:
     source:
       package:
         moduleName: graph_out
-        file: Kelp_Dao_Substreams/Kelp-Dao-Substreams-v0.1.0.spkg
+        file: Kelp_Dao_Substreams/Kelp-Dao-Substreams-v0.1.1.spkg
     mapping:
       kind: substreams/graph-entities
       apiVersion: 0.0.5
