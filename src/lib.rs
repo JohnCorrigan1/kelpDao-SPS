@@ -127,7 +127,7 @@ fn graph_out(
                     .unwrap_or_default(),
             );
 
-        tables.update_row("Referrals", &deposit.referral_id).set(
+        tables.update_row("Referral", &deposit.referral_id).set(
             "rsEthMinted",
             deposit_store
                 .get_at(0, &deposit.referral_id)

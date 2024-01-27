@@ -21,9 +21,7 @@ type Depositor @entity(immutable: false) {
     stETH: BigInt!
 }
 
-type Refferals @entity(immutable: false) {
+type Referral @entity(immutable: false) {
     id: ID!
-    rsETHMinted: BigInt!
+    rsEthMinted: BigInt!
 }
-
-
