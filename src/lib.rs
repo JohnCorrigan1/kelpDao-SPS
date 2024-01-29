@@ -74,6 +74,23 @@ fn graph_out(
 
     for deposit in deposits.asset_deposits {
         let key = format!("{}-{}", deposit.depositor, deposit.timestamp);
+        let rseth_minted = deposit_store
+            .get_at(0, &deposit.depositor)
+            .unwrap_or_default();
+        let ethx = deposit_store
+            .get_at(0, &format!("ETHx:{}", &deposit.depositor))
+            .unwrap_or_default();
+        let sfrx_eth = deposit_store
+            .get_at(0, &format!("sfrxETH:{}", &deposit.depositor))
+            .unwrap_or_default();
+        let st_eth = deposit_store
+            .get_at(0, &format!("stETH:{}", &deposit.depositor))
+            .unwrap_or_default();
+        let rseth_minted_readable = get_amount_eth(rseth_minted.clone());
+        let ethx_readable = get_amount_eth(ethx.clone());
+        let sfrx_eth_readable = get_amount_eth(sfrx_eth.clone());
+        let st_eth_readable = get_amount_eth(st_eth.clone());
+
         tables
             .create_row("AssetDeposit", key)
             .set("depositor", &deposit.depositor)
@@ -102,37 +119,19 @@ fn graph_out(
 
         tables
             .update_row("Depositor", &deposit.depositor)
-            .set(
-                "rsEthMinted",
-                deposit_store
-                    .get_at(0, &deposit.depositor)
-                    .unwrap_or_default(),
-            )
-            .set(
-                "ETHx",
-                deposit_store
-                    .get_at(0, &format!("ETHx:{}", deposit.depositor))
-                    .unwrap_or_default(),
-            )
-            .set(
-                "sfrxETH",
-                deposit_store
-                    .get_at(0, &format!("sfrxETH:{}", deposit.depositor))
-                    .unwrap_or_default(),
-            )
-            .set(
-                "stETH",
-                deposit_store
-                    .get_at(0, &format!("stETH:{}", deposit.depositor))
-                    .unwrap_or_default(),
-            );
+            .set("rsEthMinted", rseth_minted.clone())
+            .set_bigdecimal("rsEthMintedReadable", &rseth_minted_readable.to_string())
+            .set("ETHx", ethx.clone())
+            .set_bigdecimal("ETHxReadable", &ethx_readable.to_string())
+            .set("sfrxETH", sfrx_eth.clone())
+            .set_bigdecimal("sfrxETHReadable", &sfrx_eth_readable.to_string())
+            .set("stETH", st_eth.clone())
+            .set_bigdecimal("stETHReadable", &st_eth_readable.to_string());
 
-        tables.update_row("Referral", &deposit.referral_id).set(
-            "rsEthMinted",
-            deposit_store
-                .get_at(0, &deposit.referral_id)
-                .unwrap_or_default(),
-        );
+        tables
+            .update_row("Referral", &deposit.referral_id)
+            .set("rsEthMinted", rseth_minted.clone())
+            .set_bigdecimal("rsEthMintedReadable", &rseth_minted_readable.to_string());
     }
 
     Ok(tables.to_entity_changes())

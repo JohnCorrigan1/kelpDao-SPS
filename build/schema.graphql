@@ -16,12 +16,17 @@ type AssetDeposit @entity(immutable: true) {
 type Depositor @entity(immutable: false) {
     id: ID!
     rsEthMinted: BigInt!
+    rsEthMintedReadable: BigDecimal!
     ETHx: BigInt!
+    ETHxReadable: BigDecimal!
     sfrxETH: BigInt!
+    sfrxETHReadable: BigDecimal!
     stETH: BigInt!
+    stETHReadable: BigDecimal!
 }
 
 type Referral @entity(immutable: false) {
     id: ID!
     rsEthMinted: BigInt!
+    rsEthMintedReadable: BigDecimal!
 }
